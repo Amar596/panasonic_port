@@ -1,500 +1,5 @@
-// import 'package:external_app_launcher/external_app_launcher.dart';
-// import 'dart:io';
-// import 'package:path_provider/path_provider.dart';
-// import 'package:flutter/material.dart';
-// import 'package:panasonic_port/Port_Control.dart';
-// import 'package:connectivity_plus/connectivity_plus.dart';
-// import 'dart:async';
-
-// class MyHomePage extends StatefulWidget {
-//   const MyHomePage({super.key, required this.title});
-
-//   final String title;
-
-//   @override
-//   State<MyHomePage> createState() => _MyHomePageState();
-// }
-
-// class _MyHomePageState extends State<MyHomePage> {
-//   int? _hdmiStatus;
-//   int? _currentVolume;
-//   bool _hdmiMode = false;
-//   int currentAngle = 0;
-//   bool _isLoading = false;
-//   int _currentBrightness = 50;
-
-//   String? _macAddress;
-//   String? _deviceId;
-//   String? _serialNumber;
-//   String? _clientType;
-//   String? _appId;
-
-//   ConnectivityResult _connectionStatus = ConnectivityResult.none;
-//   final Connectivity _connectivity = Connectivity();
-//   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _loadCurrentBrightness();
-//      _initConnectivity();
-//     _listenForConnectivityChanges();
-//   }
-
-//   // Initialize connectivity status
-//   Future<void> _initConnectivity() async {
-//     late ConnectivityResult result;
-//     try {
-//       result = await _connectivity.checkConnectivity();
-//     } catch (e) {
-//       print('Couldn\'t check connectivity status: $e');
-//       return;
-//     }
-
-//     if (!mounted) {
-//       return Future.value(null);
-//     }
-
-//     _updateConnectionStatus(result);
-//   }
-
-//   // Listen for connectivity changes
-//   void _listenForConnectivityChanges() {
-//     _connectivitySubscription =
-//         _connectivity.onConnectivityChanged.listen(_updateConnectionStatus);
-//   }
-
-//   // Update connection status
-//   void _updateConnectionStatus(ConnectivityResult result) {
-//     setState(() {
-//       _connectionStatus = result;
-//     });
-//   }
-
-//    // Get connection status text
-//   String get _connectionStatusText {
-//     switch (_connectionStatus) {
-//       case ConnectivityResult.wifi:
-//         return 'Connected to WiFi';
-//       case ConnectivityResult.mobile:
-//         return 'Connected to Mobile Data';
-//       case ConnectivityResult.ethernet:
-//         return 'Connected to Ethernet';
-//       case ConnectivityResult.vpn:
-//         return 'Connected via VPN';
-//       case ConnectivityResult.bluetooth:
-//         return 'Connected via Bluetooth';
-//       case ConnectivityResult.other:
-//         return 'Connected (Other)';
-//       case ConnectivityResult.none:
-//         return 'No Internet Connection';
-//       default:
-//         return 'Unknown Status';
-//     }
-//   }
-
-//   // Get connection status color
-//   Color get _connectionStatusColor {
-//     switch (_connectionStatus) {
-//       case ConnectivityResult.wifi:
-//       case ConnectivityResult.mobile:
-//       case ConnectivityResult.ethernet:
-//         return Colors.green; // Connected
-//       case ConnectivityResult.none:
-//         return Colors.red; // Disconnected
-//       default:
-//         return Colors.orange; // Other/Unknown
-//     }
-//   }
-
-//   // Get connection icon
-//   IconData get _connectionStatusIcon {
-//     switch (_connectionStatus) {
-//       case ConnectivityResult.wifi:
-//         return Icons.wifi;
-//       case ConnectivityResult.mobile:
-//         return Icons.signal_cellular_4_bar;
-//       case ConnectivityResult.ethernet:
-//         return Icons.settings_ethernet;
-//       case ConnectivityResult.vpn:
-//         return Icons.security;
-//       case ConnectivityResult.bluetooth:
-//         return Icons.bluetooth;
-//       case ConnectivityResult.none:
-//         return Icons.signal_wifi_off;
-//       default:
-//         return Icons.network_check;
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     _connectivitySubscription.cancel(); // Cancel subscription
-//     super.dispose();
-//   }
-
-//   Future<void> _loadCurrentBrightness() async {
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-//         title: Text(widget.title),
-//           actions: [
-//           // Add connectivity indicator in app bar
-//           Padding(
-//             padding: const EdgeInsets.only(right: 16.0),
-//             child: Row(
-//               children: [
-//                 Icon(
-//                   _connectionStatusIcon,
-//                   color: _connectionStatusColor,
-//                   size: 20,
-//                 ),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   _connectionStatus == ConnectivityResult.wifi ||
-//                           _connectionStatus == ConnectivityResult.mobile ||
-//                           _connectionStatus == ConnectivityResult.ethernet
-//                       ? 'Online'
-//                       : 'Offline',
-//                   style: TextStyle(
-//                     fontSize: 14,
-//                     fontWeight: FontWeight.bold,
-//                     color: _connectionStatusColor,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//       body: SingleChildScrollView(
-//         child: Center(
-//           child: Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               // Add a prominent connectivity status card at the top
-//               Container(
-//                 margin: const EdgeInsets.all(16),
-//                 padding: const EdgeInsets.all(16),
-//                 decoration: BoxDecoration(
-//                   color: _connectionStatus == ConnectivityResult.none
-//                       ? Colors.red.shade50
-//                       : Colors.green.shade50,
-//                   borderRadius: BorderRadius.circular(12),
-//                   border: Border.all(
-//                     color: _connectionStatusColor.withOpacity(0.3),
-//                   ),
-//                 ),
-//                 child: Row(
-//                   mainAxisAlignment: MainAxisAlignment.center,
-//                   children: [
-//                     Icon(
-//                       _connectionStatusIcon,
-//                       color: _connectionStatusColor,
-//                       size: 28,
-//                     ),
-//                     const SizedBox(width: 12),
-//                     Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Text(
-//                           'Internet Status',
-//                           style: TextStyle(
-//                             fontSize: 14,
-//                             fontWeight: FontWeight.w500,
-//                             color: Colors.grey.shade700,
-//                           ),
-//                         ),
-//                         Text(
-//                           _connectionStatusText,
-//                           style: TextStyle(
-//                             fontSize: 16,
-//                             fontWeight: FontWeight.bold,
-//                             color: _connectionStatusColor,
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.only(top: 16.0),
-//                 child: OutlinedButton(
-//                   onPressed: _initConnectivity,
-//                   child: const Text('Refresh Connection Status'),
-//                 ),
-//               ),
-
-//               TextButton(
-//                 onPressed: () async {
-//                   await PortControl.shutDown();
-//                 },
-//                 child: const Text('Shutdown System'),
-//               ),
-//               TextButton(
-//                 onPressed: () async {
-//                   await PortControl.openHdmi(1);
-//                   await Future.delayed(const Duration(seconds: 10));
-//                   await PortControl.closeHdmi();
-//                 },
-//                 child: const Text('Open HDMI'),
-//               ),
-//               TextButton(
-//                 onPressed: () async {
-//                   await PortControl.closeHdmi();
-//                 },
-//                 child: const Text('Close HDMI'),
-//               ),
-//               TextButton(
-//                 onPressed: () async {
-//                   final status = await PortControl.getHdmiStatus(1);
-//                   setState(() {
-//                     _hdmiStatus = status;
-//                   });
-//                 },
-//                 child: const Text('Get HDMI Status'),
-//               ),
-//               (_hdmiStatus != null) ?  Text('HDMI Status: $_hdmiStatus') : SizedBox(),
-//               TextButton(
-//                 onPressed: () async {
-//                   await PortControl.turnOff();
-//                 },
-//                 child: const Text('Turn Off'),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.symmetric(vertical: 16.0),
-//                 child: Column(
-//                   children: [
-//                     const Text(
-//                       'Set BackLight',
-//                       style: TextStyle(
-//                         // fontSize: 16,
-//                         fontWeight: FontWeight.bold,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 8),
-//                     Wrap(
-//                       spacing: 8.0,
-//                       runSpacing: 8.0,
-//                       children:
-//                           [25, 50, 75, 100].map((value) {
-//                             return ElevatedButton(
-//                               onPressed: () async {
-//                                 await PortControl.setBackLight(value);
-//                                 if (mounted) {
-//                                   setState(() {
-//                                     _currentBrightness = value;
-//                                   });
-//                                 }
-//                               },
-//                               style: ElevatedButton.styleFrom(
-//                                 backgroundColor:
-//                                     Theme.of(context).colorScheme.surface,
-//                                 foregroundColor:
-//                                     Theme.of(context).colorScheme.onSurface,
-//                                 side: BorderSide(
-//                                   color: Theme.of(context).colorScheme.outline,
-//                                   width: 1,
-//                                 ),
-//                                 shape: RoundedRectangleBorder(
-//                                   borderRadius: BorderRadius.circular(8),
-//                                 ),
-//                                 padding: const EdgeInsets.symmetric(
-//                                   horizontal: 16,
-//                                   vertical: 8,
-//                                 ),
-//                               ),
-//                               child: Text(
-//                                 '$value%',
-//                                 style: const TextStyle(fontSize: 14),
-//                               ),
-//                             );
-//                           }).toList(),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//               TextButton(
-//                 onPressed: () async {
-//                   final dir = await getExternalStorageDirectory();
-//                   final filePath = "${dir!.path}/Pictures/screen_cap_1.jpg";
-//                   final result = await PortControl.startScreenCap(filePath);
-//                   print("Screen capture result: $result");
-//                 },
-//                 child: const Text('Start Screen Capture'),
-//               ),
-//               TextButton(
-//                 onPressed: () async {
-//                   const angles = [0, 90, 180, 270];
-//                   setState(() {
-//                     currentAngle =
-//                         angles[(angles.indexOf(currentAngle) + 1) %
-//                             angles.length];
-//                   });
-//                   await PortControl.setDisplayOrientation(currentAngle);
-//                 },
-//                 child: const Text('Rotate Screen'),
-//               ),
-//               Column(
-//                 children: [
-//                   TextButton(
-//                     onPressed: () async {
-//                       final volume = await PortControl.getSystemVoice();
-//                       setState(() {
-//                         _currentVolume = volume;
-//                       });
-//                     },
-//                     child: const Text('Get Volume'),
-//                   ),
-//                   if (_currentVolume != null)
-//                     Text('Current Volume: $_currentVolume'),
-//                   Slider(
-//                     value: (_currentVolume ?? 50).toDouble(),
-//                     min: 0,
-//                     max: 100,
-//                     divisions: 10,
-//                     onChanged: (value) async {
-//                       await PortControl.setSystemVoice(value.toInt());
-//                       setState(() {
-//                         _currentVolume = value.toInt();
-//                       });
-//                     },
-//                   ),
-//                   Row(
-//                     mainAxisAlignment: MainAxisAlignment.center,
-//                     children: [
-//                       TextButton(
-//                         onPressed: () async {
-//                           await PortControl.mute();
-//                           setState(() {
-//                             _currentVolume = 0;
-//                           });
-//                         },
-//                         child: const Text('Mute'),
-//                       ),
-//                       TextButton(
-//                         onPressed: () async {
-//                           await PortControl.unMute();
-//                           final volume = await PortControl.getSystemVoice();
-//                           setState(() {
-//                             _currentVolume = volume;
-//                           });
-//                         },
-//                         child: const Text('Unmute'),
-//                       ),
-//                     ],
-//                   ),
-
-//                   Padding(
-//                     padding: const EdgeInsets.symmetric(vertical: 16.0),
-//                     child: Column(
-//                       children: [
-//                         TextButton(
-//                           onPressed: () async {
-//                             await PortControl.reboot();
-//                           },
-//                           child: const Text('Reboot System'),
-//                         ),
-//                         const SizedBox(height: 16),
-//                       ],
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//               TextButton(
-//                 onPressed: () async {
-//                   final mac = await PortControl.getMacAddress();
-//                   setState(() => _macAddress = mac);
-//                 },
-//                 child: const Text('Get MAC Address'),
-//               ),
-//               if (_macAddress != null) Text('MAC: $_macAddress'),
-
-//               TextButton(
-//                 onPressed: () async {
-//                   final id = await PortControl.getDeviceId();
-//                   setState(() => _deviceId = id);
-//                 },
-//                 child: const Text('Get Device ID'),
-//               ),
-//               if (_deviceId != null) Text('Device ID: $_deviceId'),
-
-//               TextButton(
-//                 onPressed: () async {
-//                   try {
-//                     final sn = await PortControl.getSN();
-//                     if (sn == null) {
-//                       ScaffoldMessenger.of(context).showSnackBar(
-//                         const SnackBar(
-//                           content: Text('Failed to get serial number'),
-//                         ),
-//                       );
-//                     }
-//                     setState(() => _serialNumber = sn ?? 'Not available');
-//                   } catch (e) {
-//                     ScaffoldMessenger.of(context).showSnackBar(
-//                       SnackBar(content: Text('Error: ${e.toString()}')),
-//                     );
-//                   }
-//                 },
-//                 child: const Text('Get Serial Number'),
-//               ),
-//               if (_serialNumber != null)
-//                 Text(
-//                   'SN: $_serialNumber',
-//                   style: TextStyle(
-//                     color:
-//                         _serialNumber == 'Not available'
-//                             ? Colors.red
-//                             : Colors.black,
-//                   ),
-//                 ),
-
-//               TextButton(
-//                 onPressed: () async {
-//                   final type = await PortControl.getClientType();
-//                   setState(() => _clientType = type);
-//                 },
-//                 child: const Text('Get Client Type'),
-//               ),
-//               if (_clientType != null) Text('Client Type: $_clientType'),
-
-//               TextButton(
-//                 onPressed: () async {
-//                   final appId = await PortControl.getAppId();
-//                   setState(() => _appId = appId);
-//                 },
-//                 child: const Text('Get App ID'),
-//               ),
-//               if (_appId != null) Text('App ID: $_appId'),
-
-//               TextButton(
-//                 onPressed: () async {
-//                   // final value = await LaunchApp.isAppInstalled(
-//                   //   androidPackageName: "com.example.wauly_app",
-//                   // );
-//                   await LaunchApp.openApp(
-//                     androidPackageName: "com.example.wauly_app",
-//                   );
-//                   // print(value);
-//                 },
-//                 child: const Text('Open Another App'),
-//               ),
-//             ],
-//           ),
-//         ),
-
-//       ),
-//     );
-//   }
-// }
-
 import 'package:external_app_launcher/external_app_launcher.dart';
+import 'package:panasonic_port/services/wauly_app_service.dart';
 import 'package:panasonic_port/wauly_monitor_screen.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -503,6 +8,7 @@ import 'package:panasonic_port/Port_Control.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'monitoring_model.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -521,12 +27,21 @@ class _MyHomePageState extends State<MyHomePage> {
   int currentAngle = 0;
   bool _isLoading = false;
   int _currentBrightness = 50;
+  bool _isChecking = false;
+  String _statusMessage = '';
+  String _statusDetails = '';
 
   String? _macAddress;
   String? _deviceId;
   String? _serialNumber;
   String? _clientType;
   String? _appId;
+  String _appVersion = '';
+  String _currentDateTime = '';
+  bool _autoOpenEnabled = true;
+  bool _isOpeningApp = false;
+  
+  static const String KEY_AUTO_OPEN_ENABLED = 'auto_open_wauly_enabled';
 
   ConnectivityResult _connectionStatus = ConnectivityResult.none;
   final Connectivity _connectivity = Connectivity();
@@ -538,7 +53,281 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadCurrentBrightness();
     _initConnectivity();
     _listenForConnectivityChanges();
+    _autoClickOpenWaulyApp();
   }
+
+  // Add this method to save setting
+  Future<void> _saveAutoOpenSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(KEY_AUTO_OPEN_ENABLED, value);
+    print('💾 Auto-open setting saved: $value');
+  }
+
+  // Show status overlay
+  void _showStatusOverlay(
+      {required bool show, String? message, String? details}) {
+    setState(() {
+      _isChecking = show;
+      _statusMessage = message ?? '';
+      _statusDetails = details ?? '';
+    });
+  }
+  
+  Future<void> _autoClickOpenWaulyApp() async {
+    // ✅ HARD STOP
+    if (!_autoOpenEnabled) {
+      print('⛔ Auto-open disabled — skipping execution');
+      return;
+    }
+
+    if (_isOpeningApp) {
+      print('⏸️ Already opening Wauly app, skipping...');
+      return;
+    }
+
+    _isOpeningApp = true;
+
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (mounted && _autoOpenEnabled) {
+      print('🤖 Auto-clicking Open Wauly App button (homepage active)');
+      await WaulyAppManager.handleAppFlow(context);
+    }
+
+    _isOpeningApp = false;
+  }
+  
+  Future<void> _checkAppUpdate() async {
+    _showStatusOverlay(
+      show: true,
+      message: 'Checking for updates...',
+      details: 'Connecting to ${WaulyAppManager.versionUrl}',
+    );
+
+    try {
+      await WaulyAppManager.handleAppFlow(context);
+    } catch (e) {
+      _showStatusOverlay(
+        show: true,
+        message: 'Update check failed',
+        details: e.toString(),
+      );
+      await Future.delayed(const Duration(seconds: 3));
+    } finally {
+      if (mounted) {
+        _showStatusOverlay(show: false);
+      }
+    }
+  }
+
+  Future<void> _showQuickUrlDialog() async {
+    // Get current URLs
+    final currentVersionUrl = WaulyAppManager.versionUrl;
+    final currentApkUrl = WaulyAppManager.apkUrl;
+
+    final versionController = TextEditingController(text: currentVersionUrl);
+    final apkController = TextEditingController(text: currentApkUrl);
+
+    final shouldUseAzure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF161B22),
+        title: const Text(
+          'Configure Update URLs',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Version XML URL:',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: versionController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'https://.../version.xml',
+                hintStyle: TextStyle(color: Colors.grey.shade600),
+                border: const OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey.shade700),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.greenAccent),
+                ),
+                prefixIcon: const Icon(Icons.link, color: Colors.greenAccent),
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'APK Download URL:',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: apkController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'https://.../app.apk',
+                hintStyle: TextStyle(color: Colors.grey.shade600),
+                border: const OutlineInputBorder(),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey.shade700),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.greenAccent),
+                ),
+                prefixIcon:
+                    const Icon(Icons.cloud_download, color: Colors.greenAccent),
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade900.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade700),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.cloud_queue,
+                      color: Colors.blue.shade300, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Azure Default',
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'https://waulymvcapp.blob.core.windows.net/waulymvcdev/Builds/Android/Host/version.xml',
+                          style: TextStyle(
+                              color: Colors.blue.shade300, fontSize: 10),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final versionUrl = versionController.text.trim();
+              final apkUrl = apkController.text.trim();
+
+              if (versionUrl.isNotEmpty && apkUrl.isNotEmpty) {
+                Navigator.pop(context, true);
+              } else {
+                // Show error if URLs are empty
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter both URLs'),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.greenAccent,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldUseAzure == true) {
+      // Build URLs from the text fields
+      final versionUrl = versionController.text.trim();
+      final apkUrl = apkController.text.trim();
+
+      // Update URLs
+      WaulyAppManager.versionUrl = versionUrl;
+      WaulyAppManager.apkUrl = apkUrl;
+
+      // Save to SharedPreferences if needed
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(WaulyAppManager.KEY_CUSTOM_VERSION_URL, versionUrl);
+      await prefs.setString(WaulyAppManager.KEY_CUSTOM_APK_URL, apkUrl);
+
+      // Show confirmation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Custom URLs saved successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Test connection
+      await _testConnection();
+
+      // Refresh the UI
+      setState(() {});
+    }
+  }
+
+
+  // Test connection with status
+  Future<void> _testConnection() async {
+    _showStatusOverlay(
+      show: true,
+      message: 'Testing connection...',
+      details: 'Connecting to ${WaulyAppManager.versionUrl}',
+    );
+
+    try {
+      final versionInfo = await WaulyAppManager.fetchLatestVersion();
+      if (versionInfo != null) {
+        _showStatusOverlay(
+          show: true,
+          message: 'Connection successful!',
+          details: 'Latest version: ${versionInfo.version}',
+        );
+      } else {
+        _showStatusOverlay(
+          show: true,
+          message: 'Connection failed',
+          details: 'Could not fetch version info',
+        );
+      }
+    } catch (e) {
+      _showStatusOverlay(
+        show: true,
+        message: 'Connection failed',
+        details: e.toString(),
+      );
+    }
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) {
+      _showStatusOverlay(show: false);
+    }
+  }
+
+  
 
   // Initialize connectivity status
   Future<void> _initConnectivity() async {
@@ -724,6 +513,101 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
           ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 246, 246, 247),
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: Colors.greenAccent.withOpacity(0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        color: Colors.greenAccent, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Signage App Status',
+                      style: TextStyle(
+                        color: Color.fromARGB(255, 91, 14, 226),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Version: $_appVersion',
+                  style: const TextStyle(
+                      color: Color.fromARGB(255, 91, 14, 226), fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Time: $_currentDateTime',
+                  style: const TextStyle(
+                      color: Color.fromARGB(255, 91, 14, 226), fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _autoOpenEnabled
+                    ? [
+                        Colors.green.shade900.withOpacity(0.3),
+                        const Color(0xFF161B22)
+                      ]
+                    : [
+                        Colors.grey.shade900.withOpacity(0.3),
+                        const Color(0xFF161B22)
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _autoOpenEnabled
+                    ? Colors.greenAccent
+                    : Colors.grey.shade700,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _autoOpenEnabled ? Icons.touch_app : Icons.block,
+                  color: _autoOpenEnabled ? Colors.greenAccent : Colors.grey,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _autoOpenEnabled
+                        ? 'Signage App - Auto launch ENABLED'
+                        : 'Signage App - Auto launch DISABLED',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                Switch(
+                  value: _autoOpenEnabled,
+                  onChanged: (bool value) async {
+                    setState(() {
+                      _autoOpenEnabled = value;
+                    });
+                    await _saveAutoOpenSetting(value);
+
+                    if (value) {
+                      // Optional: trigger once immediately when turned ON
+                      _autoClickOpenWaulyApp();
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
 
           // Compact buttons grid
           Expanded(
@@ -784,7 +668,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       _buildCompactButton(
                         'Close HDMI',
-                       Icons.videocam_off,
+                        Icons.videocam_off,
                         () => PortControl.closeHdmi(),
                       ),
                       _buildCompactButton(
@@ -826,16 +710,16 @@ class _MyHomePageState extends State<MyHomePage> {
                           isSelected: _currentBrightness == value,
                         );
                       }),
-                      _buildCompactButton(
-                        'Capture',
-                        Icons.camera,
-                        () async {
-                          final dir = await getExternalStorageDirectory();
-                          final filePath =
-                              "${dir!.path}/Pictures/screen_cap_1.jpg";
-                          await PortControl.startScreenCap(filePath);
-                        },
-                      ),
+                      // _buildCompactButton(
+                      //   'Capture',
+                      //   Icons.camera,
+                      //   () async {
+                      //     final dir = await getExternalStorageDirectory();
+                      //     final filePath =
+                      //         "${dir!.path}/Pictures/screen_cap_1.jpg";
+                      //     await PortControl.startScreenCap(filePath);
+                      //   },
+                      // ),
                     ],
                   ),
 
@@ -986,16 +870,41 @@ class _MyHomePageState extends State<MyHomePage> {
 
                   const SizedBox(height: 16),
 
-                  // App Launcher Section
+                  //App Launcher Section
                   _buildSectionTitle('Applications'),
                   _buildCompactButton(
-                    'Open Another App',
+                    'Wauly',
                     Icons.open_in_new,
-                    () => LaunchApp.openApp(
-                      androidPackageName: "com.example.wauly_app",
-                    ),
+                    () async {
+                      // Show loading indicator
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+
+                      try {
+                        await WaulyAppManager.handleAppFlow(context);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } finally {
+                        // Close loading dialog if still open
+                        if (context.mounted && Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        }
+                      }
+                    },
                   ),
-                   const SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildCompactButton(
                     'Event Monitor',
                     Icons.monitor_heart,

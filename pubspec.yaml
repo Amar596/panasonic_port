@@ -40,6 +40,9 @@ dependencies:
   external_app_launcher: ^4.0.3
   connectivity_plus: ^5.0.2
   shared_preferences: ^2.2.2
+  android_intent_plus: ^5.0.0
+  dio: ^5.4.0
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
