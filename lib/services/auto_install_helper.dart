@@ -3,18 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:panasonic_port/services/wauly_app_service.dart';
 
 class AutoInstallHelper {
-  static const platform = MethodChannel('auto_install');
+  //static const platform = MethodChannel('auto_install');
+  static const MethodChannel _channel = MethodChannel('auto_install');
   static Timer? _monitoringTimer;
 
   // Start monitoring for dialogs
   static void startDialogMonitoring() {
-    stopDialogMonitoring(); // Stop any existing monitoring
+    stopDialogMonitoring();
     _monitoringTimer =
         Timer.periodic(const Duration(milliseconds: 800), (timer) async {
       final hasDialog = await isUpdateDialogShowing();
       if (hasDialog) {
-        stopDialogMonitoring(); // Stop monitoring
-        await autoHandleUpdateIfNeeded();
+        stopDialogMonitoring();
+        await autoClickUpdateButton('Update Now');
       }
     });
   }
@@ -25,19 +26,56 @@ class AutoInstallHelper {
     _monitoringTimer = null;
   }
 
+  // static Future<void> triggerAutoInstall(String apkPath) async {
+  //   try {
+  //     // Reset flags before starting new installation
+  //     await resetAutoClickFlags();
+
+  //     // First open the installer
+  //     await WaulyAppManager.installApk(apkPath);
+
+  //     // Wait for installer window and auto-click
+  //     await Future.delayed(const Duration(seconds: 2));
+  //     await _channel.invokeMethod('autoClickInstall');
+  //   } catch (e) {
+  //     print('Auto-install failed: $e');
+  //   }
+  // }
+
+  // In auto_install_helper.dart
   static Future<void> triggerAutoInstall(String apkPath) async {
     try {
-      // Reset flags before starting new installation
-      await resetAutoClickFlags();
-
-      // First open the installer
+      // Direct install without accessibility
       await WaulyAppManager.installApk(apkPath);
-
-      // Wait for installer window and auto-click
-      await Future.delayed(const Duration(seconds: 2));
-      await _channel.invokeMethod('autoClickInstall');
+      print('✅ Direct install triggered: $apkPath');
     } catch (e) {
-      print('Auto-install failed: $e');
+      print('❌ Error triggering install: $e');
+      rethrow;
+    }
+  }
+
+  static Future<String?> getPackageVersion(String packageName) async {
+    try {
+      final String? version = await _channel.invokeMethod('getPackageVersion', {
+        'packageName': packageName,
+      });
+      return version;
+    } catch (e) {
+      print('❌ Error getting package version: $e');
+      return null;
+    }
+  }
+
+  static Future<int?> getPackageVersionCode(String packageName) async {
+    try {
+      final int? versionCode =
+          await _channel.invokeMethod('getPackageVersionCode', {
+        'packageName': packageName,
+      });
+      return versionCode;
+    } catch (e) {
+      print('❌ Error getting package version code: $e');
+      return null;
     }
   }
 
@@ -52,22 +90,31 @@ class AutoInstallHelper {
   static Future<void> resetAutoClickFlags() async {
     try {
       await _channel.invokeMethod('resetFlags');
+      print('✅ Reset auto-click flags');
     } catch (e) {
       print('Failed to reset flags: $e');
     }
   }
 
-  static const MethodChannel _channel = MethodChannel('auto_install');
+  //static const MethodChannel _channel = MethodChannel('auto_install');
 
   static Future<bool> isAccessibilityEnabled() async {
+  // Retry up to 3 times with a short delay to handle startup timing
+  for (int i = 0; i < 3; i++) {
     try {
       final bool isEnabled =
           await _channel.invokeMethod('isAccessibilityEnabled');
       return isEnabled;
+    } on MissingPluginException {
+      if (i < 2) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
     } catch (e) {
       print('❌ Error checking accessibility: $e');
       return false;
     }
+    }
+    return false;
   }
 
   // Method for clicking dialog buttons

@@ -15,4 +15,10 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <string name="app_name">panasonic_port</string>
+    <string name="accessibility_service_description">This service allows the app to automatically
+        click install buttons during app updates</string>
+
+
 </resources>

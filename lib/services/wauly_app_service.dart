@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:xml/xml.dart';
 import 'auto_install_helper.dart';
+import 'package:flutter/services.dart';
 
 class AppVersionInfo {
   final String version;
@@ -178,6 +179,7 @@ class WaulyAppManager {
   // ADD THESE CONSTANTS
   static const String KEY_CUSTOM_VERSION_URL = 'custom_version_url';
   static const String KEY_CUSTOM_APK_URL = 'custom_apk_url';
+  static const _channel = MethodChannel('auto_install');
 
   // 🔹 INSTALL APK
   static Future<void> installApk(String filePath) async {
@@ -257,6 +259,121 @@ class WaulyAppManager {
         );
       },
     );
+  }
+
+  // Add to WaulyAppManager class
+  static Future<void> clearStalePendingInstallation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasPending = prefs.getBool(KEY_PENDING_INSTALL) ?? false;
+
+    if (hasPending) {
+      print('🗑️ Clearing stale pending installation...');
+      final pendingApkPath = prefs.getString(KEY_PENDING_APK_PATH);
+
+      // Delete the pending APK file if it exists
+      if (pendingApkPath != null) {
+        final file = File(pendingApkPath);
+        if (await file.exists()) {
+          await file.delete();
+          print('✅ Deleted pending APK: $pendingApkPath');
+        }
+      }
+
+      // Clear all pending flags
+      await clearPendingInstallation();
+      print('✅ Cleared all pending installation flags');
+    }
+  }
+
+  static Future<void> downloadAndInstallDirect(
+    String url,
+    String fileName, {
+    BuildContext? context,
+  }) async {
+    print('🚀 Starting direct download (no accessibility)...');
+
+    final progressController = StreamController<double>();
+    Future<void>? dialogFuture;
+    if (context != null && context.mounted) {
+      dialogFuture = _showProgressDialog(context, progressController.stream);
+    }
+
+    try {
+      if (await Permission.storage.isDenied) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) throw Exception('Storage permission denied');
+      }
+
+      final path = await downloadApk(
+        url,
+        fileName,
+        onProgress: (progress) {
+          if (!progressController.isClosed) {
+            progressController.add(progress.toDouble());
+          }
+          if (progress >= 100) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (!progressController.isClosed) progressController.close();
+            });
+          }
+        },
+      );
+
+      print('✅ APK downloaded to: $path');
+
+      // ✅ Close dialog explicitly — don't await dialogFuture
+      if (context != null && context.mounted) {
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.isFirst);
+      }
+      if (!progressController.isClosed) progressController.close();
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // ✅ This will now actually execute
+      print('📱 Launching package installer via native channel...');
+      try {
+        await _channel.invokeMethod('installApk', {'path': path});
+        print('✅ Package installer launched');
+      } on PlatformException catch (e) {
+        print('❌ Native install failed: ${e.message}');
+        rethrow;
+      }
+
+      if (context != null && context.mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text('Installation Ready'),
+            content: const Text(
+              '✓ Download complete!\n\n'
+              'Please tap "INSTALL" when prompted, then "OPEN" to continue.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      print('🎯 Installation in progress.');
+    } catch (e) {
+      print('❌ Direct download failed: $e');
+      if (!progressController.isClosed) progressController.close();
+      if (context != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      rethrow;
+    }
   }
 
   // Load saved URLs from SharedPreferences
@@ -532,7 +649,6 @@ class WaulyAppManager {
     print('🗑️ Cleared pending installation');
   }
 
-  // 🔹 CHECK AND RESUME PENDING INSTALLATION - CALL THIS IN main() OR SPLASH SCREEN
   static Future<bool> checkAndResumePendingInstallation() async {
     final prefs = await SharedPreferences.getInstance();
     final hasPending = prefs.getBool(KEY_PENDING_INSTALL) ?? false;
@@ -550,15 +666,24 @@ class WaulyAppManager {
       return false;
     }
 
+    // ✅ ADD THE STALE CHECK RIGHT HERE, after the file existence check
+    final apkFile = File(pendingApkPath);
+    final age = DateTime.now().difference((await apkFile.stat()).modified);
+    if (age.inHours > 24) {
+      print('⚠️ Pending APK is stale (${age.inHours}h old), clearing');
+      await apkFile.delete();
+      await clearPendingInstallation();
+      return false;
+    }
+    // ✅ END OF NEW CODE
+
     print('🔄 Found pending installation, checking accessibility...');
 
-    // Check if accessibility is now enabled
     final isEnabled = await AutoInstallHelper.isAccessibilityEnabled();
 
     if (isEnabled) {
       print('✅ Accessibility enabled, resuming installation');
 
-      await AutoInstallHelper.resetAutoClickFlags();
       await AutoInstallHelper.triggerAutoInstall(pendingApkPath);
       print('✅ APK installation initiated from pending state');
 
@@ -569,13 +694,9 @@ class WaulyAppManager {
       await cleanupOldApks(pendingApkPath);
       await clearPendingInstallation();
 
-      // Exit after installation
-      await Future.delayed(const Duration(seconds: 2));
-      SystemChannels.platform.invokeMethod('SystemNavigator.pop');
       return true;
     } else {
       print('❌ Accessibility still not enabled');
-      // Keep pending state for next app launch
       return false;
     }
   }
@@ -750,38 +871,28 @@ class WaulyAppManager {
     await intent.launch();
   }
 
-  //🔹 MAIN FLOW
+  //🔹 MAIN FLOW - WITHOUT ACCESSIBILITY
   static Future<void> handleAppFlow(BuildContext context) async {
-    print('=== Starting App Flow ===');
+    print('=== Starting App Flow (No Accessibility Mode) ===');
 
-    // FIRST: Check for pending installation from previous session
-    final pendingResumed = await checkAndResumePendingInstallation();
-    if (pendingResumed) {
-      print('✅ Pending installation resumed and completed');
-      return;
-    }
+    // FIRST: Clear any stale pending installations since we don't have accessibility
+    await clearStalePendingInstallation();
 
     final installedVersion = await getInstalledVersion();
     final latest = await fetchLatestVersion();
 
     print('📱 Installed version: $installedVersion');
     print('🌐 Latest version: ${latest?.version ?? 'null'}');
-    print('🔍 Latest exeUrl: ${latest?.exeUrl ?? 'null'}');
-    print('🔍 Latest fileName: ${latest?.fileName ?? 'null'}');
 
     if (latest == null) {
       print('⚠️ Could not fetch latest version from server');
       if (installedVersion != null) {
         await openApp();
       } else {
-        // Use Azure default URL when no version info is available
         final defaultApkUrl =
             'https://waulymvcapp.blob.core.windows.net/waulymvcdev/Builds/Android/Host/WaulySignage.apk';
-        await downloadAndInstall(defaultApkUrl, 'wauly.apk',
-            exitAfterInstall: true,
-            newVersion: '',
-            context: context,
-            shouldShowDialog: true);
+        await downloadAndInstallDirect(defaultApkUrl, 'wauly.apk',
+            context: context);
       }
       return;
     }
@@ -790,69 +901,41 @@ class WaulyAppManager {
       print('❌ App not installed');
       final install = await _showInstallDialog(context);
       if (install) {
-        await downloadAndInstall(
+        await downloadAndInstallDirect(
           latest.exeUrl,
           latest.fileName,
-          exitAfterInstall: true,
-          newVersion: latest.version,
           context: context,
-          shouldShowDialog: false,
         );
       }
-      return;
-    }
-
-    final lastInstalled = await getLastInstalledVersion();
-    print('Installed version: $installedVersion');
-    print('Latest version: ${latest.version}');
-    print('Last installed marked: $lastInstalled');
-
-    if (lastInstalled == latest.version) {
-      print('Already installed version ${latest.version}, opening app');
-      // ✅ ADD THE POPUP MESSAGE HERE
-      if (context.mounted) {
-        // Show SnackBar message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '✓ Already installed version ${latest.version}, opening app'),
-            duration: Duration(seconds: 3),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-
-      // Small delay to show the message before opening the app
-      await Future.delayed(Duration(milliseconds: 1500));
-      await openApp();
       return;
     }
 
     final needsUpdate = isNewerVersion(installedVersion, latest.version);
-    print('🔍 Needs update: $needsUpdate');
+
     if (needsUpdate) {
       print('🆕 New version available! $installedVersion → ${latest.version}');
-      print('🚀 Auto-starting download and install...');
+      final shouldUpdate =
+          await _showUpdateDialog(context, installedVersion, latest.version);
 
-      await downloadAndInstall(
-        latest.exeUrl,
-        latest.fileName,
-        exitAfterInstall: true,
-        newVersion: latest.version,
-        context: context,
-      );
+      if (shouldUpdate) {
+        print('🚀 User confirmed update, starting download...');
+        await downloadAndInstallDirect(
+          latest.exeUrl,
+          latest.fileName,
+          context: context,
+        );
+      } else {
+        print('⏸️ User postponed update, opening current app');
+        await openApp();
+      }
     } else {
       print('✅ No update needed');
-      await markUpdateInstalled(installedVersion);
-      // ✅ ADD POPUP MESSAGE HERE TOO
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✓ App is up to date (version $installedVersion)'),
             duration: Duration(seconds: 2),
             backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
           ),
         );
         await Future.delayed(Duration(milliseconds: 1000));
@@ -944,27 +1027,38 @@ class WaulyAppManager {
   }
 
   static Future<bool> _showInstallDialog(BuildContext context) async {
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            title: const Text('Install App'),
-            content: const Text(
-                'Wauly app is not installed. Would you like to install it now?'),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel')),
-              ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                  ),
-                  child: const Text('Install')),
-            ],
+    final completer = Completer<bool>();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Install App'),
+        content: const Text(
+            'Wauly app is not installed. Would you like to install it now?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+              completer.complete(false);
+            },
+            child: const Text('Cancel'),
           ),
-        ) ??
-        false;
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+              completer.complete(true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Install'),
+          ),
+        ],
+      ),
+    );
+
+    return await completer.future;
   }
 
   static Future<void> forceUpdateIfNeeded(BuildContext context) async {

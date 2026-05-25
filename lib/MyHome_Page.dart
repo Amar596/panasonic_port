@@ -1,6 +1,7 @@
 import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:panasonic_port/services/wauly_app_service.dart';
 import 'package:panasonic_port/wauly_monitor_screen.dart';
+import 'package:panasonic_port/widgets/storage_info_widget.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'monitoring_model.dart';
+
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -40,7 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String _currentDateTime = '';
   bool _autoOpenEnabled = true;
   bool _isOpeningApp = false;
-  
+
   static const String KEY_AUTO_OPEN_ENABLED = 'auto_open_wauly_enabled';
 
   ConnectivityResult _connectionStatus = ConnectivityResult.none;
@@ -72,7 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _statusDetails = details ?? '';
     });
   }
-  
+
   Future<void> _autoClickOpenWaulyApp() async {
     // ✅ HARD STOP
     if (!_autoOpenEnabled) {
@@ -96,7 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     _isOpeningApp = false;
   }
-  
+
   Future<void> _checkAppUpdate() async {
     _showStatusOverlay(
       show: true,
@@ -289,7 +291,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-
   // Test connection with status
   Future<void> _testConnection() async {
     _showStatusOverlay(
@@ -326,8 +327,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _showStatusOverlay(show: false);
     }
   }
-
-  
 
   // Initialize connectivity status
   Future<void> _initConnectivity() async {
@@ -518,7 +517,7 @@ class _MyHomePageState extends State<MyHomePage> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: const Color.fromARGB(255, 246, 246, 247),
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(1),
               border: Border.all(color: Colors.greenAccent.withOpacity(0.4)),
             ),
             child: Column(
@@ -538,13 +537,13 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 1),
                 Text(
                   'Version: $_appVersion',
                   style: const TextStyle(
                       color: Color.fromARGB(255, 91, 14, 226), fontSize: 13),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 1),
                 Text(
                   'Time: $_currentDateTime',
                   style: const TextStyle(
@@ -554,8 +553,10 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
 
+          const StorageInfoWidget(), 
+          
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -569,7 +570,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         const Color(0xFF161B22)
                       ],
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(1),
               border: Border.all(
                 color: _autoOpenEnabled
                     ? Colors.greenAccent
